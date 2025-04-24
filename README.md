@@ -32,7 +32,7 @@ View and manage GitHub Copilot license assignments across your organization.
 
 ### Prerequisites
 
-- Node.js 18.x or higher
+- Node.js 22.x or higher
 - GitHub Enterprise or Organization with Copilot licenses
 - GitHub Personal Access Token with appropriate permissions
 
