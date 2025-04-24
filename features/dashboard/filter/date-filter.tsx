@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarIcon } from "@radix-ui/react-icons";
-import { format } from "date-fns";
+import { format, isAfter } from "date-fns";
 import * as React from "react";
 import { DateRange } from "react-day-picker";
 import { parseDate } from "@/utils/helpers";
@@ -24,24 +24,58 @@ export const DateFilter = ({ limited = false }: DateFilterProps) => {
   const [isClient, setIsClient] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
   const [date, setDate] = React.useState<DateRange | undefined>(undefined);
+  
+  // Create a date reference for today to use in multiple places
+  const today = new Date();
+
+  // Function to get default date range based on limitations
+  const getDefaultDateRange = (): DateRange => {
+    const defaultDays = limited ? 27 : 31;
+    const lastDays = new Date(today);
+    lastDays.setDate(today.getDate() - defaultDays);
+    // Return complete DateRange with defined from and to dates
+    return { from: lastDays, to: today };
+  };
+
+  // Custom date selection handler to prevent future date selection
+  const handleDateSelect = (selectedRange: DateRange | undefined) => {
+    if (!selectedRange) {
+      setDate(undefined);
+      return;
+    }
+    
+    // Create a new range with valid dates
+    const newRange: DateRange = {
+      from: selectedRange.from,
+      to: selectedRange.to
+    };
+    
+    // Check if selected dates are in the future and adjust if needed
+    if (selectedRange.from && isAfter(selectedRange.from, today)) {
+      return; // Don't allow future start dates
+    }
+    
+    if (selectedRange.to && isAfter(selectedRange.to, today)) {
+      newRange.to = today; // Cap end date to today
+    }
+    
+    setDate(newRange);
+  };
 
   // Use useEffect for client-side initialization to avoid hydration mismatch
   React.useEffect(() => {
     setIsClient(true);
-    
-    const today = new Date();
-    const defaultDays = limited ? 27 : 31;
-    const lastDays = new Date(today);
-    lastDays.setDate(today.getDate() - defaultDays);
     
     const params = new URLSearchParams(window.location.search);
     const startDate = parseDate(params.get('startDate'));
     const endDate = parseDate(params.get('endDate'));
     
     if (startDate && endDate) {
-      setDate({ from: startDate, to: endDate });
+      // Ensure dates don't exceed today
+      const validEndDate = isAfter(endDate, today) ? today : endDate;
+      setDate({ from: startDate, to: validEndDate });
     } else {
-      setDate({ from: lastDays, to: today });
+      setDate(getDefaultDateRange());
     }
   }, [limited]);
 
@@ -59,7 +93,16 @@ export const DateFilter = ({ limited = false }: DateFilterProps) => {
   };
 
   const resetFilters = () => {    
-    router.push(`/`, {
+    // Reset the local state to default dates
+    const defaultRange = getDefaultDateRange();
+    setDate(defaultRange);
+    
+    // Format the default dates for URL parameters - ensure dates are defined
+    const formatEndDate = format(defaultRange.to as Date, "yyyy-MM-dd");
+    const formatStartDate = format(defaultRange.from as Date, "yyyy-MM-dd");
+    
+    // Update the URL with the default date range
+    router.push(`?startDate=${formatStartDate}&endDate=${formatEndDate}`, {
       scroll: false,
     });
     router.refresh();
@@ -103,9 +146,22 @@ export const DateFilter = ({ limited = false }: DateFilterProps) => {
               mode="range"
               defaultMonth={date?.from}
               selected={date}
-              onSelect={setDate}
+              onSelect={handleDateSelect}
               numberOfMonths={2}
-              disabled={limited ? { before: new Date(new Date().getTime() - (27 * 24 * 60 * 60 * 1000)) } : undefined}
+              disabled={(day) => {
+                // Disable future dates
+                if (isAfter(day, today)) return true;
+                
+                // Also apply the limited restriction if needed
+                if (limited) {
+                  const minDate = new Date(today);
+                  minDate.setDate(today.getDate() - 27);
+                  return day < minDate;
+                }
+                
+                return false;
+              }}
+              toDate={today} // Set maximum date to today
             />
           )}
           <div className="flex justify-between m-2 gap-2">
