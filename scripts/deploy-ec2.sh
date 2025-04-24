@@ -1,6 +1,6 @@
 #!/bin/bash
 # Single-instance deployment script for copilot-metrics-dashboard
-# For use on Ubuntu 24.04 with Node.js 22
+# For use on Ubuntu 24.04 with Node.js 22 on t4g.small instances
 
 # Exit on any error
 set -e
@@ -45,9 +45,13 @@ cd "$APP_DIR"
 echo "Installing dependencies..."
 npm install
 
-# Build the application
-echo "Building application..."
-npm run build
+# Clean up node_modules cache to free memory before build
+echo "Cleaning npm cache to free memory..."
+npm cache clean --force
+
+# Build the application with memory-optimized settings
+echo "Building application for low-memory environment..."
+npm run build:ubuntu
 
 # Install PM2 globally if not installed
 if ! command -v pm2 &> /dev/null; then

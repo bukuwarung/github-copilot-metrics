@@ -7,6 +7,7 @@
     "dev:debug": "NODE_OPTIONS='--inspect' next dev",
     "dev:trace": "NEXT_TRACE_WARNINGS=1 NODE_OPTIONS='--trace-warnings' next dev",
     "build": "next build",
+    "build:ubuntu": "NODE_OPTIONS='--max-old-space-size=1500' next build",
     "start": "next start",
     "test": "vitest",
     "lint": "next lint"
